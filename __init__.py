@@ -10,7 +10,7 @@ signrequest = host+plugin+"?id=dc_signin:sign&inajax=1"
 sendaddr = home+"?mod=post&action=reply&fid=179&tid=45019&extra=&replysubmit=yes&infloat=yes&handlekey=fastpost&inajax=1"
 urlhuo = home+"?mod=viewthread&tid=45019&_dsign=707f90f0"
 
-Username = "WildboarG"
+Username = "xxxxxxx"
 Password = "xxxxxxx"
 uid= "xxxxx"
 
