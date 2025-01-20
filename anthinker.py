@@ -3,6 +3,7 @@ import requests
 import re
 import time
 import random
+import os
 
 def login(Username,Password :str) -> str:
     res = requests.get(home)
@@ -79,7 +80,7 @@ def login(Username,Password :str) -> str:
         print("登录失败")
         return
 
-def Oneyear(uid, headers : dict): ## 一周年活动
+def Oneyear(uid, headers : dict): 
     getpage = requests.get(url=urlhuo,headers=headers)
     #print(getpage.text)
     lastpage = re.findall(howpage,getpage.text)
@@ -115,9 +116,9 @@ def Oneyear(uid, headers : dict): ## 一周年活动
                 print(sendmsg)
                 ##print(res.text)  
             else:
-                print("别发啦，小心被园长抓住！")
+                print("别发！")
         except:
-            print("发不了，会被园长抓住的！")
+            print("发不了")
     else:
         print("ok")
 
@@ -147,11 +148,13 @@ def Registration(arg : list): ## 签到
         print("今天已经签到过了！明天在来吧")
 
 if __name__ == '__main__':
-    somthing = login(Username,Password)
-    # Registration(somthing)
-    # while(True):
-    Oneyear(uid,somthing)
-        # time.sleep(60*10)
+    credentials = os.getenv('Anthinker')  # 青龙环境变量
+    if credentials:
+        Username, Password = credentials.split(':')  # 使用 : 分隔用户名和密码[用户名:密码]
+    else:
+        pass
+    token = login(Username,Password)
+    Registration(token)
 
 
 
