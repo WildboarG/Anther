@@ -4,157 +4,134 @@ import re
 import time
 import random
 import os
+import json
+import logging
+from typing import Optional, Dict
+from config_manager import ConfigManager, ConfigurationError
+from http_client import HTTPClient
+from dataclasses import dataclass
 
-def login(Username,Password :str) -> str:
-    res = requests.get(home)
-    rheader = res.headers["Set-Cookie"]
-    formhash = re.findall(reformhash, res.text)[0]
-    if formhash == "":
-        return "login error"
-    data = {
-        "formhash": formhash,
-        "ident": "user_login",
-        "referer": home,
-        "username":Username,
-        "password": Password
-    }
-    saltkey = re.findall(resaltkey, rheader)[0]
-    lastvisit = re.findall(relastvisit, rheader)[0]
-    sid = re.findall(resid, rheader)[0]
-    lastact = re.findall(restact, rheader)[0]
-    ## 构建登录请求cookie
-    cookie = "cRkY_2132_saltkey={}; \
-            cRkY_2132_lastvisit={}; \
-            cRkY_2132_sendmail=1; \
-            cRkY_2132_sid={}; \
-            cRkY_2132_lastact={}" \
-    .format(saltkey,lastvisit,sid,lastact)
+# 配置日志
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
-    headers = {
-        "Cookie":cookie,
-    }
-    res = requests.post(url=loginurl,data=data,headers=headers)
-    try:
-        print(res.json()["message"])
-        rheader = res.headers["Set-Cookie"]
+@dataclass
+class LoginResult:
+    """登录结果数据类"""
+    success: bool
+    message: str
+    headers: Optional[Dict[str, str]] = None
 
-        ulastactivity = re.findall("cRkY_2132_ulastactivity=(.*?);",rheader)[0]
-        auth = re.findall("cRkY_2132_auth=(.*?);",rheader)[0]
+class AnthinkerClient:
+    def __init__(self):
+        self.config = ConfigManager()
+        self.http_client = HTTPClient(base_url=home)
+        self._setup_logging()
 
-        lastcheckfeed = re.findall("cRkY_2132_lastcheckfeed=(.*?);",rheader)[0]
-        checkfollow = re.findall("cRkY_2132_checkfollow=(.*?);",rheader)[0]
-    except:
-        print("登录失败")
-        return 
-    
-    ## 登陆成功
-    print("-------------------")
-    myhome = requests.get(home,headers=headers)
-    rheader = myhome.headers["Set-Cookie"]
-    try:
-        PHPSESSID = re.findall(rephp,rheader)[0]
-        #print("ph:",PHPSESSID)
-        sid = re.findall(resid,rheader)[0]
-        lastact = re.findall(restact,rheader)[0]
+    def _setup_logging(self):
+        self.logger = logging.getLogger(__name__)
 
-        cook = "PHPSESSID={}; \
-        cRkY_2132_sid={}; \
-        cRkY_2132_saltkey={}; \
-        cRkY_2132_lastvisit={}; \
-        cRkY_2132_ulastactivity={}; \
-        cRkY_2132_auth={}; \
-        cRkY_2132_lastcheckfeed={}; \
-        cRkY_2132_checkfollow={}; \
-        cRkY_2132_nofavfid=1; \
-        cRkY_2132_sendmail=1; \
-        cRkY_2132_checkpm=1; \
-        cRkY_2132_lastact={}"\
-        .format(PHPSESSID,sid,saltkey,lastvisit,ulastactivity,auth,lastcheckfeed,checkfollow,lastact)
-        headers = {
-            "User-Agent":"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-            "Cookie":cook
-        }
-        #print(headers)
-        return headers
-    except:
-        print("登录失败")
-        return
+    def _extract_form_hash(self, content: str) -> str:
+        """从页面内容提取formhash"""
+        matches = re.findall(reformhash, content)
+        if not matches:
+            raise ValueError("无法找到formhash")
+        return matches[0]
 
-def Oneyear(uid, headers : dict): 
-    getpage = requests.get(url=urlhuo,headers=headers)
-    #print(getpage.text)
-    lastpage = re.findall(howpage,getpage.text)
-    page = "&extra=&page="+ lastpage[0]
-    urldong = urlhuo+page
-
-    res = requests.get(url=urldong,headers=headers)
-    #print(res.text)
-    lastdemo = re.findall(lastuser,res.text)
-    formhash = re.findall(reformhash,res.text)
-    lastpage = re.findall(howpage,res.text)
-    print("LastPage:",lastpage[0])
-    
-    urldong = urlhuo +"&extra=&page="+lastpage[0]
-
-    datenow = str(int(time.time()))
-
-    ## 判断最后两个用户有自己吗？
-    if (lastdemo != []): 
+    def _build_login_cookie(self, headers: Dict[str, str]) -> Dict[str, str]:
+        """构建登录cookie"""
         try:
-            if((lastdemo[-1][-5:] != uid) and (lastdemo[-2][-5:]!= uid)):
-                print("Userid  :",lastdemo[-1][-5:],lastdemo[-2][-5:])
-                sendmsg = random.choice(msg)
-                datas = {
-                        "file":"", 
-                        "message": sendmsg,
-                        "posttime": datenow,
-                        "formhash": formhash[0],
-                        "usesig": "1",
-                        "subject":""
-                } 
-                res = requests.post(url=sendaddr,headers=headers,data=datas)
-                print(sendmsg)
-                ##print(res.text)  
-            else:
-                print("别发！")
-        except:
-            print("发不了")
-    else:
-        print("ok")
+            cookie_data = {
+                'saltkey': re.findall(resaltkey, headers["Set-Cookie"])[0],
+                'lastvisit': re.findall(relastvisit, headers["Set-Cookie"])[0],
+                'sid': re.findall(resid, headers["Set-Cookie"])[0],
+                'lastact': re.findall(restact, headers["Set-Cookie"])[0]
+            }
+            return {f"cRkY_2132_{k}": v for k, v in cookie_data.items()}
+        except (KeyError, IndexError) as e:
+            raise ValueError(f"提取cookie数据失败: {str(e)}")
 
-def Registration(arg : list): ## 签到
-   
-    header = arg
-    res = requests.get(signhome,headers=header)
+    def login(self) -> LoginResult:
+        """用户登录"""
+        try:
+            # 获取初始页面
+            initial_response = self.http_client.get("/")
+            formhash = self._extract_form_hash(initial_response.text)
+            
+            # 构建登录数据
+            login_data = {
+                "formhash": formhash,
+                "ident": "user_login",
+                "referer": home,
+                "username": self.config.credentials.username,
+                "password": self.config.credentials.password
+            }
 
-    print("####################")
+            # 设置初始cookie
+            initial_cookies = self._build_login_cookie(initial_response.headers)
+            self.http_client.update_cookies(initial_cookies)
 
-    formhash = re.findall(reformhash, res.text)
-    if formhash != []:
-        print("new#####:",formhash)  
-        data2 = {
-        "formhash": formhash,
-        "signsubmit": "yes",
-        "handlekey": "signin",
-        "emotid": "1",
-        "referer": host+um,
-        "content": "记上一笔，hold住我的快乐！"
-        }
-        response = requests.post(url=signrequest,headers=header,data=data2)
-        print("签到成功！")
-        #print(response.text)
+            # 发送登录请求
+            login_response = self.http_client.post(loginurl, data=login_data)
+            
+            if login_response.ok and "message" in login_response.json():
+                self.logger.info(f"登录响应: {login_response.json()['message']}")
+                return LoginResult(True, "登录成功", dict(self.http_client.session.headers))
+            
+            return LoginResult(False, "登录失败", None)
 
-    else:
-        print("今天已经签到过了！明天在来吧")
+        except Exception as e:
+            self.logger.error(f"登录过程出错: {str(e)}")
+            return LoginResult(False, str(e), None)
+
+    def registration(self) -> bool:
+        """签到功能"""
+        try:
+            response = self.http_client.get(signhome)
+            formhash = self._extract_form_hash(response.text)
+
+            sign_data = {
+                "formhash": formhash,
+                "signsubmit": "yes",
+                "handlekey": "signin",
+                "emotid": "1",
+                "referer": f"{host}{um}",
+                "content": "记上一笔，hold住我的快乐！"
+            }
+
+            sign_response = self.http_client.post(signrequest, data=sign_data)
+            
+            if sign_response.ok:
+                self.logger.info("签到成功！")
+                return True
+            return False
+
+        except ValueError as e:
+            self.logger.info("今天已经签到过了！明天再来吧")
+            return False
+        except Exception as e:
+            self.logger.error(f"签到失败: {str(e)}")
+            return False
+
+def main():
+    try:
+        client = AnthinkerClient()
+        login_result = client.login()
+        
+        if login_result.success:
+            client.registration()
+        else:
+            logging.error(f"登录失败: {login_result.message}")
+
+    except ConfigurationError as e:
+        logging.error(f"配置错误: {str(e)}")
+    except Exception as e:
+        logging.error(f"程序执行出错: {str(e)}")
 
 if __name__ == '__main__':
-    credentials = os.getenv('Anthinker')  # 青龙环境变量
-    if credentials:
-        Username, Password = credentials.split(':')  # 使用 : 分隔用户名和密码[用户名:密码]
-    else:
-        pass
-    token = login(Username,Password)
-    Registration(token)
+    main()
 
 
 

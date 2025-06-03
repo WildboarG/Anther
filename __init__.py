@@ -1,7 +1,7 @@
 from __init__ import *
 
 host = "https://bbs.ai-thinker.com"
-um ="/forum.php"
+um ="/home.php"
 plugin ="/plugin.php"
 home = host + um
 loginurl = host+plugin+"?id=one_sms:api&action=user&inajax=1"
@@ -10,8 +10,7 @@ signrequest = host+plugin+"?id=dc_signin:sign&inajax=1"
 sendaddr = home+"?mod=post&action=reply&fid=179&tid=45019&extra=&replysubmit=yes&infloat=yes&handlekey=fastpost&inajax=1"
 urlhuo = home+"?mod=viewthread&tid=45019&_dsign=707f90f0"
 
-Username = "xxxxxxx"
-Password = "xxxxxxx"
+
 uid= "xxxxx"
 
 ## re
