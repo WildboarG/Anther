@@ -1,7 +1,7 @@
 from __init__ import *
 
 host = "https://bbs.ai-thinker.com"
-um ="/home.php"
+um ="/forum.php"
 plugin ="/plugin.php"
 home = host + um
 loginurl = host+plugin+"?id=one_sms:api&action=user&inajax=1"
